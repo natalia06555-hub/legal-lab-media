@@ -15,7 +15,7 @@ from playwright.async_api import async_playwright
 
 sys.path.insert(0, os.path.dirname(__file__))
 import render_carousel as rc
-from music_neoclassic import compose
+from music_ambient import compose
 
 COVER = """<html><head><meta charset='utf-8'><style>
 *{margin:0;padding:0;box-sizing:border-box}
