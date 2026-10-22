@@ -1,0 +1,31 @@
+name: fetch-media
+# Скачивает картинки по ссылкам из inbox/*.txt (строка: "<url> <путь в репозитории>")
+on:
+  push:
+    paths: ["inbox/**"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download
+        run: |
+          shopt -s nullglob
+          for f in inbox/*.txt; do
+            while read -r url path; do
+              [ -z "$url" ] && continue
+              mkdir -p "$(dirname "$path")"
+              curl -sSL --max-time 60 -o "$path" "$url" && echo "ok $path" || echo "FAIL $url"
+            done < "$f"
+            git rm -q "$f"
+          done
+      - name: Commit
+        run: |
+          git config user.name "legal-lab-media-bot"
+          git config user.email "actions@github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Загружены медиа из inbox"
+          git push
