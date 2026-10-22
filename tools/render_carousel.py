@@ -12,10 +12,9 @@ spec.json: {"slides": [ {...}, ... ]}
   cta      : title, accent, button
   photo    : kicker, photo, title, paras[], foot, credit   (фото сверху, текст снизу)
 Доп. поля: cover.photo (фото на весь слайд с затемнением), credit (подпись автора фото),
-mascot (путь к png маскота — встаёт в правый нижний угол, текст сужается):
-  Лучше брать поясные версии *_half.png (крупнее): explain_half, point_half, wave_half.
-  media/mascot/explain.png — объясняет (открытая ладонь), point.png — «важно!» (палец вверх),
-  wave.png — привет/итог (машет рукой).
+mascot (путь к png маскота — встаёт в правый нижний угол, текст сужается). Эмоции в media/mascot/:
+  think (задумалась), surprised (удивилась), stop (предупреждает, «стоп»), ironic (ирония, руки скрещены),
+  thumbsup (одобряет), shrug (разводит руками), pointside (показывает влево на текст), phone (читает подозрительное в телефоне).
 Фото кладутся в media/photos/ через inbox/*.txt (см. .github/workflows/fetch-media.yml).
 Выход: slide_1.jpg ... slide_N.jpg (1080x1350) + slide_N.png
 """
@@ -57,7 +56,7 @@ ol li:before{counter-increment:n;content:counter(n);position:absolute;left:0;top
 .credit{position:absolute;right:56px;bottom:52px;font-size:20px;color:rgba(243,234,215,.55)}
 .pic{width:100%;height:560px;background-position:center 30%;border:2px solid rgba(201,166,92,.55);background-size:cover;margin-top:60px}
 .pic+h2{margin-top:44px}
-.mascot{position:absolute;right:20px;bottom:0;height:700px;z-index:3}.withm ul,.withm ol,.withm h2,.withm p,.withm .btn{max-width:590px}.withm .foot{max-width:560px}
+.mascot{position:absolute;right:10px;bottom:0;height:640px;max-width:470px;object-fit:contain;object-position:bottom right;z-index:3}.withm ul,.withm ol,.withm h2,.withm p,.withm .btn{max-width:590px}.withm .foot{max-width:420px}
 .btn{display:inline-block;margin-top:50px;padding:28px 46px;border:2px solid #d9b56a;color:#d9b56a;font-size:36px;font-weight:600}
 """
 
