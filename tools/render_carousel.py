@@ -12,7 +12,10 @@ spec.json: {"slides": [ {...}, ... ]}
   cta      : title, accent, button
   photo    : kicker, photo, title, paras[], foot, credit   (фото сверху, текст снизу)
 Доп. поля: cover.photo (фото на весь слайд с затемнением), credit (подпись автора фото),
-mascot (путь к png маскота — встаёт в правый нижний угол).
+mascot (путь к png маскота — встаёт в правый нижний угол, текст сужается):
+  Лучше брать поясные версии *_half.png (крупнее): explain_half, point_half, wave_half.
+  media/mascot/explain.png — объясняет (открытая ладонь), point.png — «важно!» (палец вверх),
+  wave.png — привет/итог (машет рукой).
 Фото кладутся в media/photos/ через inbox/*.txt (см. .github/workflows/fetch-media.yml).
 Выход: slide_1.jpg ... slide_N.jpg (1080x1350) + slide_N.png
 """
@@ -54,7 +57,7 @@ ol li:before{counter-increment:n;content:counter(n);position:absolute;left:0;top
 .credit{position:absolute;right:56px;bottom:52px;font-size:20px;color:rgba(243,234,215,.55)}
 .pic{width:100%;height:560px;background-position:center 30%;border:2px solid rgba(201,166,92,.55);background-size:cover;margin-top:60px}
 .pic+h2{margin-top:44px}
-.mascot{position:absolute;right:60px;bottom:60px;width:300px}
+.mascot{position:absolute;right:20px;bottom:0;height:700px;z-index:3}.withm ul,.withm ol,.withm h2,.withm p,.withm .btn{max-width:590px}.withm .foot{max-width:560px}
 .btn{display:inline-block;margin-top:50px;padding:28px 46px;border:2px solid #d9b56a;color:#d9b56a;font-size:36px;font-weight:600}
 """
 
@@ -105,6 +108,8 @@ async def main(spec, out):
         for i, s in enumerate(slides, 1):
             num = f'<div class="num">{i}/{len(slides)}</div>'
             cls = "s ph" if s.get("photo") and s.get("type") == "cover" else "s"
+            if s.get("mascot"):
+                cls += " withm"
             mascot = f'<img class="mascot" src="{img_uri(s["mascot"])}">' if s.get("mascot") else ""
             await pg.set_content(f"<html><head><meta charset='utf-8'><style>{CSS}</style></head><body><div class='{cls}'>{num}{body(s)}{mascot}</div></body></html>")
             await pg.wait_for_timeout(150)
