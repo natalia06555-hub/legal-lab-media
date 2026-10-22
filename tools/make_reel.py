@@ -7,8 +7,11 @@ spec.json:
   "cover": {"title": "Нейросеть ошиблась —", "accent": "отвечаете вы", "badge": "30 секунд о ваших рисках"},
   "slides": [ ... те же типы, что в render_carousel.py ... ],
   "seed": 7,                     # вариант музыки (любое число)
-  "narration": ["текст для обложки", "текст для слайда 1", ...]   # необязательно
+  "narration": ["текст для обложки", "текст для слайда 1", ...],   # необязательно
+  "intro_video": "media/avatar/2026-10-30-intro.mp4"   # необязательно: говорящий маскот (Kling) в начале
 }
+С intro_video ролик = говорящий маскот (со своим звуком) + слайды с озвучкой и музыкой.
+Обложка (cover.jpg) в этом случае используется только как превью в ленте.
 Если рядом с выходом лежит narration.wav (озвучка всех фрагментов narration подряд),
 слайды подстраиваются под речь, музыка уходит на фон.
 Выход: reel.mp4 (1080x1920, ~25-35 c), cover.jpg (1080x1920)
@@ -95,7 +98,21 @@ def main(spec_path, out):
                     "-t", f"{total:.2f}", "-c:v", "libx264", "-crf", "20", "-pix_fmt", "yuv420p",
                     "-c:a", "aac", "-b:a", "160k",
                     "-movflags", "+faststart", f"{out}/reel.mp4"], check=True)
-    print(f"{out}/reel.mp4", round(total, 1), "s")
+    intro = spec.get("intro_video")
+    if intro:
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        ipath = intro if os.path.isabs(intro) else os.path.join(root, intro)
+        os.replace(f"{out}/reel.mp4", f"{out}/_body.mp4")
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", ipath, "-ss", "1.3", "-i", f"{out}/_body.mp4",
+                        "-filter_complex",
+                        "[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=0x123628,setsar=1,fps=30,format=yuv420p[iv];"
+                        "[0:a]aresample=44100,aformat=channel_layouts=stereo[ia];"
+                        "[1:v]setsar=1,fps=30,format=yuv420p[bv];[1:a]aresample=44100,aformat=channel_layouts=stereo[ba];"
+                        "[iv][ia][bv][ba]concat=n=2:v=1:a=1[v][a]",
+                        "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-crf", "20", "-pix_fmt", "yuv420p",
+                        "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", f"{out}/reel.mp4"], check=True)
+        os.remove(f"{out}/_body.mp4")
+    print(f"{out}/reel.mp4", "ok")
 
 
 if __name__ == "__main__":
