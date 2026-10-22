@@ -28,7 +28,7 @@ h2{font-family:'Noto Serif','DejaVu Serif',serif;font-weight:700;font-size:66px;
 p{font-size:40px;line-height:1.42;color:#e6dcc5;margin-top:40px}
 .sub{font-size:46px;margin-top:56px;color:#d9b56a;font-weight:600}
 .big{font-family:'Noto Serif','DejaVu Serif',serif;font-size:170px;line-height:1;color:#d9b56a;margin-top:100px;font-weight:700}
-ul,ol{list-style:none;margin-top:56px}
+ul,ol{list-style:none;margin-top:auto;margin-bottom:auto;padding-top:40px}
 li{font-size:42px;line-height:1.35;padding:24px 0 24px 64px;position:relative;border-bottom:1px solid rgba(201,166,92,.25)}
 ul li:before{content:'';position:absolute;left:8px;top:42px;width:22px;height:22px;background:#c9a65c;transform:rotate(45deg)}
 ol{counter-reset:n}
@@ -50,7 +50,10 @@ def body(s):
                 + (f'<div class="sub">{e(s["sub"])}</div>' if s.get("sub") else "")
                 + '<div class="foot" style="margin-top:90px">Листайте →</div>')
     if t == "big":
-        return k + f'<div class="big">{e(s.get("big"))}</div>' + paras + foot
+        bt = s.get("big") or ""
+        longest = max((len(w) for w in bt.split()), default=1)
+        size = min(170, int(860 / (0.82 * longest)))
+        return k + f'<div class="big" style="font-size:{size}px">{e(bt)}</div>' + paras + foot
     if t in ("list", "numbered"):
         tag = "ul" if t == "list" else "ol"
         items = "".join(f"<li>{e(i)}</li>" for i in s.get("items", []))
