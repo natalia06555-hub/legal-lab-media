@@ -10,9 +10,22 @@ spec.json: {"slides": [ {...}, ... ]}
   list     : kicker, items[], foot
   numbered : kicker, items[], foot
   cta      : title, accent, button
+  photo    : kicker, photo, title, paras[], foot, credit   (фото сверху, текст снизу)
+Доп. поля: cover.photo (фото на весь слайд с затемнением), credit (подпись автора фото),
+mascot (путь к png маскота — встаёт в правый нижний угол).
+Фото кладутся в media/photos/ через inbox/*.txt (см. .github/workflows/fetch-media.yml).
 Выход: slide_1.jpg ... slide_N.jpg (1080x1350) + slide_N.png
 """
-import asyncio, json, os, sys, html
+import asyncio, json, os, sys, html, base64
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def img_uri(path):
+    """Фото из репозитория (путь от корня, напр. media/photos/x.jpg) → data URI."""
+    full = path if os.path.isabs(path) else os.path.join(ROOT, path)
+    ext = "png" if full.lower().endswith(".png") else "jpeg"
+    return f"data:image/{ext};base64," + base64.b64encode(open(full, "rb").read()).decode()
 from playwright.async_api import async_playwright
 
 CSS = """
@@ -34,6 +47,14 @@ ul li:before{content:'';position:absolute;left:8px;top:42px;width:22px;height:22
 ol{counter-reset:n}
 ol li:before{counter-increment:n;content:counter(n);position:absolute;left:0;top:20px;font-family:'Noto Serif','DejaVu Serif',serif;font-size:48px;color:#d9b56a;font-weight:700}
 .foot{margin-top:auto;font-size:30px;color:#c9a65c;letter-spacing:.04em}
+.bg{position:absolute;inset:0;background-size:cover;background-position:center}
+.shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,42,34,.25) 0%,rgba(15,42,34,.55) 45%,rgba(15,42,34,.97) 78%)}
+.s.ph{padding-top:110px}
+.s.ph>.brand,.s.ph>h1,.s.ph>.sub,.s.ph>.foot{position:relative;z-index:2}.s.ph>.num,.s.ph>.credit{z-index:2}
+.credit{position:absolute;right:56px;bottom:52px;font-size:20px;color:rgba(243,234,215,.55)}
+.pic{width:100%;height:560px;background-position:center 30%;border:2px solid rgba(201,166,92,.55);background-size:cover;margin-top:60px}
+.pic+h2{margin-top:44px}
+.mascot{position:absolute;right:60px;bottom:60px;width:300px}
 .btn{display:inline-block;margin-top:50px;padding:28px 46px;border:2px solid #d9b56a;color:#d9b56a;font-size:36px;font-weight:600}
 """
 
@@ -45,6 +66,15 @@ def body(s):
     k = f'<div class="brand">{e(s.get("kicker", "Legal.Lab.Ai"))}</div>'
     foot = f'<div class="foot">{e(s["foot"])}</div>' if s.get("foot") else ""
     paras = "".join(f"<p>{e(p)}</p>" for p in s.get("paras", []))
+    credit = f'<div class="credit">{e(s["credit"])}</div>' if s.get("credit") else ""
+    if t == "cover" and s.get("photo"):
+        return (f'<div class="bg" style="background-image:url({img_uri(s["photo"])})"></div><div class="shade"></div>'
+                + k + f'<h1>{e(s.get("title"))}<br><span class="gold">{e(s.get("accent"))}</span></h1>'
+                + (f'<div class="sub">{e(s["sub"])}</div>' if s.get("sub") else "")
+                + '<div class="foot" style="margin-top:70px">Листайте →</div>' + credit)
+    if t == "photo":
+        return (k + f'<div class="pic" style="background-image:url({img_uri(s["photo"])});background-position:center {s.get('focus', '30%')}"></div>'
+                + f'<h2>{e(s.get("title"))}</h2>' + paras + foot + credit)
     if t == "cover":
         return (k + f'<h1>{e(s.get("title"))}<br><span class="gold">{e(s.get("accent"))}</span></h1>'
                 + (f'<div class="sub">{e(s["sub"])}</div>' if s.get("sub") else "")
@@ -74,7 +104,9 @@ async def main(spec, out):
         pg = await b.new_page(viewport={"width": 1080, "height": 1350})
         for i, s in enumerate(slides, 1):
             num = f'<div class="num">{i}/{len(slides)}</div>'
-            await pg.set_content(f"<html><head><meta charset='utf-8'><style>{CSS}</style></head><body><div class='s'>{num}{body(s)}</div></body></html>")
+            cls = "s ph" if s.get("photo") and s.get("type") == "cover" else "s"
+            mascot = f'<img class="mascot" src="{img_uri(s["mascot"])}">' if s.get("mascot") else ""
+            await pg.set_content(f"<html><head><meta charset='utf-8'><style>{CSS}</style></head><body><div class='{cls}'>{num}{body(s)}{mascot}</div></body></html>")
             await pg.wait_for_timeout(150)
             png = f"{out}/slide_{i}.png"
             await pg.screenshot(path=png)
