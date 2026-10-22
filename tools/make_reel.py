@@ -6,8 +6,11 @@ spec.json:
 {
   "cover": {"title": "Нейросеть ошиблась —", "accent": "отвечаете вы", "badge": "30 секунд о ваших рисках"},
   "slides": [ ... те же типы, что в render_carousel.py ... ],
-  "seed": 7                      # вариант музыки (любое число)
+  "seed": 7,                     # вариант музыки (любое число)
+  "narration": ["текст для обложки", "текст для слайда 1", ...]   # необязательно
 }
+Если рядом с выходом лежит narration.wav (озвучка всех фрагментов narration подряд),
+слайды подстраиваются под речь, музыка уходит на фон.
 Выход: reel.mp4 (1080x1920, ~25-35 c), cover.jpg (1080x1920)
 """
 import asyncio, json, os, subprocess, sys, html
@@ -51,9 +54,19 @@ def main(spec_path, out):
     asyncio.run(rc.main(f"{out}/_slides.json", f"{out}/frames"))
     n = len(spec["slides"])
     files = [f"{out}/cover.png"] + [f"{out}/frames/slide_{i}.png" for i in range(1, n + 1)]
-    D = [1.8] + [4.4] * n
-    D[-1] = 4.6
     X = 0.5
+    voice = f"{out}/narration.wav"
+    has_voice = os.path.exists(voice) and spec.get("narration")
+    if has_voice:
+        vd = float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", voice]).decode().strip())
+        segs = spec["narration"]
+        w = [max(len(t), 1) for t in segs]
+        target = vd + 1.2 + X * (len(files) - 1)
+        D = [max(1.6, target * x / sum(w)) for x in w]
+        D[-1] += 1.0
+    else:
+        D = [1.8] + [4.4] * n
+        D[-1] = 4.6
     total = sum(D) - X * (len(D) - 1)
     compose(f"{out}/music.wav", total + 1, seed=spec.get("seed", 1))
     inp, f = [], []
@@ -68,10 +81,19 @@ def main(spec_path, out):
         off += D[i - 1] - X
         f.append(f"[{prev}][v{i}]xfade=transition=fade:duration={X}:offset={off:.2f}[x{i}]")
         prev = f"x{i}"
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *inp, "-i", f"{out}/music.wav",
-                    "-filter_complex", ";".join(f), "-map", f"[{prev}]", "-map", f"{len(D)}:a",
+    m = len(D)
+    if has_voice:
+        inp += ["-i", f"{out}/music.wav", "-i", voice]
+        f.append(f"[{m}:a]volume=0.16[mu];[{m + 1}:a]adelay=500|500,volume=1.0[vo];[mu][vo]amix=inputs=2:duration=first:normalize=0,afade=t=out:st={total - 2:.2f}:d=2[a]")
+        amap = "[a]"
+    else:
+        inp += ["-i", f"{out}/music.wav"]
+        f.append(f"[{m}:a]afade=t=out:st={total - 2:.2f}:d=2[a]")
+        amap = "[a]"
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *inp,
+                    "-filter_complex", ";".join(f), "-map", f"[{prev}]", "-map", amap,
                     "-t", f"{total:.2f}", "-c:v", "libx264", "-crf", "20", "-pix_fmt", "yuv420p",
-                    "-c:a", "aac", "-b:a", "160k", "-af", f"afade=t=out:st={total - 2:.2f}:d=2",
+                    "-c:a", "aac", "-b:a", "160k",
                     "-movflags", "+faststart", f"{out}/reel.mp4"], check=True)
     print(f"{out}/reel.mp4", round(total, 1), "s")
 

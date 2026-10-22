@@ -61,7 +61,8 @@ def compose(path, DUR, seed=1):
                 n = int(0.25 * SR); tt = np.arange(n) / SR
                 f = 110 * np.exp(-tt * 18) + 45
                 kick = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-tt * 9)
-                out[s:s + n] += 0.22 * kick[: len(out) - s]
+                seg = kick[: max(0, len(out) - s)]
+                out[s:s + len(seg)] += 0.22 * seg
             sh = int((tb + beat / 2) * SR); n = int(0.05 * SR)
             if sh + n < len(out):
                 out[sh:sh + n] += 0.02 * rng.standard_normal(n) * np.exp(-np.arange(n) / SR * 80)
