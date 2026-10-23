@@ -36,12 +36,29 @@ h1{font-family:'Noto Serif','DejaVu Serif',serif;font-size:112px;line-height:1.0
 <h1>%s<br>%s</h1><div><span class='s'>%s</span></div><div class='f'>Юрист объясняет без занудства</div></div></body></html>"""
 
 
+PHOTO_COVER = """<html><head><meta charset='utf-8'><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:1080px;height:1920px;background:#0f2a22;font-family:'Inter',sans-serif;color:#f3ead7;overflow:hidden}
+.bg{position:absolute;inset:0;background-size:cover;background-position:center %s}
+.sh{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,42,34,.55) 0%%,rgba(15,42,34,0) 22%%,rgba(15,42,34,0) 55%%,rgba(15,42,34,.9) 74%%,rgba(15,42,34,.98) 100%%)}
+.b{position:absolute;left:96px;top:300px;font-size:30px;letter-spacing:.22em;font-weight:700;color:#d9b56a}
+.w{position:absolute;left:96px;right:96px;bottom:200px}
+h1{font-family:'Noto Serif','DejaVu Serif',serif;font-size:82px;line-height:1.06;font-weight:700}
+.g{color:#d9b56a}
+.s{display:inline-block;margin-top:50px;background:#d9b56a;color:#0f2a22;font-size:42px;font-weight:700;padding:20px 32px}
+</style></head><body><div class='bg' style="background-image:url(%s)"></div><div class='sh'></div>
+<div class='b'>LEGAL.LAB.AI</div><div class='w'><h1>%s<br><span class='g'>%s</span></h1><span class='s'>%s</span></div></body></html>"""
+
+
 async def render_cover(c, path):
     e = html.escape
     async with async_playwright() as p:
         b = await p.chromium.launch()
         pg = await b.new_page(viewport={"width": 1080, "height": 1920})
-        await pg.set_content(COVER % (e(c["title"]), e(c.get("accent", "")), e(c.get("badge", "30 секунд о ваших рисках"))))
+        if c.get("photo"):
+            await pg.set_content(PHOTO_COVER % (c.get("focus", "30%"), rc.img_uri(c["photo"]), e(c["title"]), e(c.get("accent", "")), e(c.get("badge", "30 секунд о ваших рисках"))))
+        else:
+            await pg.set_content(COVER % (e(c["title"]), e(c.get("accent", "")), e(c.get("badge", "30 секунд о ваших рисках"))))
         await pg.wait_for_timeout(200)
         await pg.screenshot(path=path)
         await b.close()
