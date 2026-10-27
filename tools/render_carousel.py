@@ -22,6 +22,8 @@ mascot (путь к png маскота — встаёт в правый нижн
   idea (поднятый палец — «важно», правило, лайфхак), call (говорит по телефону — звонки, мошенники, переговоры),
   handshake (протягивает руку — договорились, мировое, приглашение), notes (пишет в планшете — чек-лист, документы, шаги).
   Не повторяй одну эмоцию в соседних постах; новые (вторая строка) — в приоритете, чтобы картинка не приедалась.
+  В полный рост (стоит у правого края, занимает всю высоту, текст сужается до 560px — для слайдов с коротким текстом, cta и «big»):
+  full_think, full_surprised, full_stop, full_ironic, full_thumbsup, full_shrug, full_point (указывает влево на текст), full_phone (смотрит в телефон, с сумкой).
   Те же эмоции есть лицами для Kling в media/avatar/faces/<эмоция>.jpg.
 Фото кладутся в media/photos/ через inbox/*.txt (см. .github/workflows/fetch-media.yml).
 Выход: slide_1.jpg ... slide_N.jpg (1080x1350) + slide_N.png
@@ -65,6 +67,7 @@ ol li:before{counter-increment:n;content:counter(n);position:absolute;left:0;top
 .pic{width:100%;height:560px;background-position:center 30%;border:2px solid rgba(201,166,92,.55);background-size:cover;margin-top:60px}
 .pic+h2{margin-top:44px}
 .mascot{position:absolute;right:10px;bottom:0;height:640px;max-width:470px;object-fit:contain;object-position:bottom right;z-index:3}.withm ul,.withm ol,.withm h2,.withm p,.withm .btn{max-width:590px}.withm .foot{max-width:420px}
+.mascot.full{height:1210px;max-width:430px;right:24px}.withf ul,.withf ol,.withf h2,.withf p,.withf .btn,.withf .foot,.withf .big{max-width:560px}
 .btn{display:inline-block;margin-top:50px;padding:28px 46px;border:2px solid #d9b56a;color:#d9b56a;font-size:36px;font-weight:600}
 """
 
@@ -115,9 +118,10 @@ async def main(spec, out):
         for i, s in enumerate(slides, 1):
             num = f'<div class="num">{i}/{len(slides)}</div>'
             cls = "s ph" if s.get("photo") and s.get("type") == "cover" else "s"
+            full = "full_" in (s.get("mascot") or "")
             if s.get("mascot"):
-                cls += " withm"
-            mascot = f'<img class="mascot" src="{img_uri(s["mascot"])}">' if s.get("mascot") else ""
+                cls += " withf" if full else " withm"
+            mascot = f'<img class="mascot{" full" if full else ""}" src="{img_uri(s["mascot"])}">' if s.get("mascot") else ""
             await pg.set_content(f"<html><head><meta charset='utf-8'><style>{CSS}</style></head><body><div class='{cls}'>{num}{body(s)}{mascot}</div></body></html>")
             await pg.wait_for_timeout(150)
             png = f"{out}/slide_{i}.png"
