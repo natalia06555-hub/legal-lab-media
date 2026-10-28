@@ -3,7 +3,7 @@
 python3 tools/make_motion_reel.py <папка_рилс>
 
 В папке: spec.json, words_raw.json (tools/align_words.py), narration.wav (озвучка, уже ускоренная в spec.tempo раз).
-Выход: reel.mp4 (1080x1920, 30 fps), cover.jpg, preview.jpg (контактный лист кадров каждые 2 с — посмотреть через Read).
+Выход: reel.mp4 (1080x1920, 30 fps), cover.jpg (обложка в стиле канала, см. spec.cover), preview.jpg (контактный лист кадров каждые 2 с — посмотреть через Read).
 
 Текст на экране = слова озвучки, появляются по одному в момент произнесения; слова из spec.keywords — золотым курсивом.
 Сцены сменяются в момент, когда звучит якорь "at". Якорь — слово или короткая фраза из озвучки
@@ -15,7 +15,13 @@ spec.json:
 {
  "tempo": 1.1,                # во сколько раз ускорена narration.wav относительно исходной (для пересчёта таймингов)
  "seed": 28,                  # вариант фоновой музыки
- "cover_t": 4.6,              # секунда ролика, которая станет обложкой (обычно момент карточки хука)
+ "cover": {                    # ОБЛОЖКА — в стиле всех обложек канала (тёмно-зелёная, антиква, золотой акцент, золотая плашка)
+   "title": "Соседи залили квартиру?",   # крючок, 2–5 слов, белым
+   "accent": "5 шагов, чтобы вам возместили",  # вторая строка золотом
+   "badge": "Памятка · 5 шагов",          # золотая плашка: рубрика · формат
+   "photo": "media/scenes/....jpg", "focus": "30%",   # сцена дня из Canva / фото героини; если нет —
+   "pose": "headache"                     # вырезанная героиня (поза из списка ниже) на тёмно-зелёном фоне
+ },
  "keywords": ["залили", "акт", "три", "года"],   # слова для выделения (без учёта регистра и знаков)
  "steps": ["Вода и видео", "Акт о заливе", ...],  # подписи трекера шагов (3–5, до 16 символов); без steps трекер скрыт
  "intro_video": "media/avatar/2026-10-30-intro.mp4",   # необязательно: говорящий маскот (Kling) в начале
@@ -45,7 +51,7 @@ glasses («а теперь внимательно»), handshake (договор�
  outro     : title («Сохраните»), sub («помощник — бот в шапке профиля»).
 keywords — значимые слова (не короче 3 букв; «не», «в» игнорируются). Все тексты в сценах — короткие (2–4 слова на плашку), длинное — в озвучку.
 """
-import asyncio, json, os, re, subprocess, sys, base64, shutil
+import asyncio, json, os, re, subprocess, sys, base64, shutil, html as _h
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(__file__))
@@ -344,6 +350,40 @@ window.render=render;
 </script></body></html>"""
 
 
+COVER_MASCOT = """<html><head><meta charset='utf-8'><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:1080px;height:1920px;overflow:hidden;font-family:Inter,sans-serif;color:#f3ead7;
+background:radial-gradient(ellipse 80%% 55%% at 55%% 38%%,#2a5a47 0%%,#173b2f 45%%,#0f2a22 75%%)}
+.m{position:absolute;left:50%%;top:330px;height:1180px;transform:translateX(-46%%);filter:drop-shadow(0 30px 50px rgba(0,0,0,.35))}
+.sh{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,42,34,.55) 0%%,rgba(15,42,34,0) 20%%,rgba(15,42,34,0) 52%%,rgba(15,42,34,.92) 70%%,rgba(15,42,34,.99) 100%%)}
+.gl{position:absolute;inset:0;opacity:.08;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='300' height='300' filter='url(%%23n)'/></svg>")}
+.b{position:absolute;left:96px;top:300px;font-size:30px;letter-spacing:.22em;font-weight:700;color:#d9b56a}
+.w{position:absolute;left:96px;right:96px;bottom:200px}
+h1{font-family:'Noto Serif','DejaVu Serif',serif;font-size:82px;line-height:1.06;font-weight:700}
+.g{color:#d9b56a}
+.s{display:inline-block;margin-top:50px;background:#d9b56a;color:#0f2a22;font-size:42px;font-weight:700;padding:20px 32px}
+</style></head><body><img class='m' src='%s'><div class='sh'></div><div class='gl'></div>
+<div class='b'>LEGAL.LAB.AI</div><div class='w'><h1>%s<br><span class='g'>%s</span></h1><span class='s'>%s</span></div></body></html>"""
+
+
+async def render_cover(c, path):
+    from playwright.async_api import async_playwright
+    import make_reel
+    e = _h.escape
+    if c.get("photo"):
+        page = make_reel.PHOTO_COVER % (c.get("focus", "30%"), uri(c["photo"]), e(c["title"]), e(c.get("accent", "")), e(c.get("badge", "")))
+    else:
+        pose = c.get("pose") if c.get("pose") in POSES else "doubt"
+        page = COVER_MASCOT % (uri(f"media/mascot/{pose}.png"), e(c["title"]), e(c.get("accent", "")), e(c.get("badge", "")))
+    async with async_playwright() as p:
+        b = await p.chromium.launch()
+        pg = await b.new_page(viewport={"width": 1080, "height": 1920})
+        await pg.set_content(page)
+        await pg.wait_for_timeout(300)
+        await pg.screenshot(path=path, type="jpeg", quality=92)
+        await b.close()
+
+
 def build_data(d, spec):
     tempo = spec.get("tempo", 1.0)
     T = lambda ms: LEAD + ms / 1000 / tempo
@@ -420,7 +460,7 @@ def build_data(d, spec):
     return {"words": words, "sent": sent, "scenes": scenes, "steps": spec.get("steps", []), "img": imgs, "trkStart": trk, "lastStepIdx": last}
 
 
-async def render_frames(html, n, fdir, cover_t):
+async def render_frames(html, n, fdir):
     from playwright.async_api import async_playwright
     async with async_playwright() as p:
         b = await p.chromium.launch()
@@ -432,8 +472,6 @@ async def render_frames(html, n, fdir, cover_t):
         for i in range(n):
             await pg.evaluate(f"render({i / FPS})")
             await pg.screenshot(path=f"{fdir}/f{i:05d}.jpg", type="jpeg", quality=90)
-        await pg.evaluate(f"render({cover_t})")
-        await pg.screenshot(path=f"{fdir}/../cover.jpg", type="jpeg", quality=92)
         await b.close()
         if errs:
             raise SystemExit("JS error: " + errs[0])
@@ -449,8 +487,10 @@ def main(d):
     fdir = f"{d}/frames"
     shutil.rmtree(fdir, ignore_errors=True); os.makedirs(fdir)
     n = int(total * FPS)
-    ct = spec.get("cover_t") or (data["trkStart"] + 0.6 if data["trkStart"] else 3.0)
-    asyncio.run(render_frames(html, n, fdir, ct))
+    if not spec.get("cover", {}).get("title"):
+        raise SystemExit("spec.cover.title обязателен: обложка делается отдельно, в стиле канала")
+    asyncio.run(render_cover(spec["cover"], f"{d}/cover.jpg"))
+    asyncio.run(render_frames(html, n, fdir))
     compose(f"{d}/music.wav", total + 1, seed=spec.get("seed", 1))
     out = f"{d}/reel.mp4"
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(FPS), "-i", f"{fdir}/f%05d.jpg",
