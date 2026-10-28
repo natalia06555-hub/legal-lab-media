@@ -1,0 +1,27 @@
+{
+ "title": "Соседи залили квартиру — 5 шагов",
+ "tempo": 1.12,
+ "seed": 28,
+ "keywords": ["залили", "квартиру?", "пять", "шагов,", "видео:", "акт", "заливе.", "12 часов.", "платит.", "сосед.", "управляющая", "компания.", "оценку", "осмотр.", "Претензия.", "суд.", "три", "года.", "Сохраните,"],
+ "steps": ["Вода и видео", "Акт о заливе", "Кто платит", "Оценка ущерба", "Претензия и суд"],
+ "scenes": [
+  {"type": "hook", "start": 0, "label": "// 01 · залив", "mascot": "media/mascot/headache.png",
+   "cues": {"stamp": 1400, "calm": 2700, "steps": 4000}, "mascot2": {"at": 4000, "src": "media/mascot/idea.png"}},
+  {"type": "phone", "start": 7200, "step": 1, "label": "// шаг 1 · вода и видео", "mascot": "media/mascot/think_pen.png",
+   "cues": {"tap": 8300, "rec": 9500, "c1": 11300, "c2": 12000, "c3": 12600}},
+  {"type": "act", "start": 13800, "step": 2, "label": "// шаг 2 · акт о заливе", "mascot": "media/mascot/call.png",
+   "cues": {"call": 14800, "doc": 16200, "riser": 18400, "clock": 21600}},
+  {"type": "split", "start": 23800, "step": 3, "label": "// шаг 3 · кто платит", "mascot": "media/mascot/scales.png",
+   "cues": {"q": 24800, "left": 26900, "right": 29600}},
+  {"type": "estimate", "start": 33100, "step": 4, "label": "// шаг 4 · оценка ущерба", "mascot": "media/mascot/notes.png",
+   "cues": {"report": 34200, "letter": 36200}},
+  {"type": "court", "start": 39000, "step": 5, "label": "// шаг 5 · претензия и суд", "mascot": "media/mascot/point_you.png",
+   "cues": {"claim": 40000, "court": 42100, "years": 43800}},
+  {"type": "outro", "start": 44900, "label": "// сохраните", "mascot": "media/mascot/coffee_smile.png", "cues": {}}
+ ],
+ "sources": [
+  "Гражданский кодекс РФ (часть первая) от 30.11.1994 № 51-ФЗ, ст. 15, 196, 210",
+  "Гражданский кодекс РФ (часть вторая) от 26.01.1996 № 14-ФЗ, ст. 1064",
+  "Постановление Правительства РФ от 06.05.2011 № 354 «О предоставлении коммунальных услуг…», п. 152 Правил"
+ ]
+}
