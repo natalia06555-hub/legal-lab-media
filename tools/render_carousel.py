@@ -11,6 +11,8 @@ spec.json: {"slides": [ {...}, ... ]}
   numbered : kicker, items[], foot
   cta      : title, accent, button
   photo    : kicker, photo, title, paras[], foot, credit   (фото сверху, текст снизу)
+  chat     : kicker, title, messages[{who: you|ai, text, label?, bad[]?}], foot  (переписка с нейросетью пузырями; bad — фрагменты ответа ИИ, подсвеченные как ошибка)
+  prompt   : kicker, title, prompt, copy, foot  (готовый запрос в рамке «скопируйте»; ~600 знаков максимум на слайд)
 Доп. поля: cover.photo (фото на весь слайд с затемнением), credit (подпись автора фото),
 mascot (путь к png маскота — встаёт в правый нижний угол, текст сужается). Эмоции в media/mascot/:
   think (задумалась), surprised (удивилась), stop (предупреждает, «стоп»), ironic (ирония, руки скрещены),
@@ -68,6 +70,14 @@ ol li:before{counter-increment:n;content:counter(n);position:absolute;left:0;top
 .pic+h2{margin-top:44px}
 .mascot{position:absolute;right:10px;bottom:0;height:640px;max-width:470px;object-fit:contain;object-position:bottom right;z-index:3}.withm ul,.withm ol,.withm h2,.withm p,.withm .btn{max-width:590px}.withm .foot{max-width:420px}
 .mascot.full{height:1210px;max-width:430px;right:24px}.withf ul,.withf ol,.withf h2,.withf p,.withf .btn,.withf .foot,.withf .big{max-width:560px}
+.chat{margin-top:auto;margin-bottom:auto;padding-top:30px;display:flex;flex-direction:column;gap:26px}
+.msg{max-width:84%;padding:24px 30px;border-radius:30px;font-size:35px;line-height:1.36}
+.msg .who{display:block;font-size:22px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;opacity:.75;font-weight:600}
+.msg.you{align-self:flex-end;background:#d9b56a;color:#0f2a22;border-bottom-right-radius:8px}
+.msg.ai{align-self:flex-start;background:#1d4236;color:#f3ead7;border-bottom-left-radius:8px;border:1px solid rgba(201,166,92,.35)}
+.msg .bad{background:rgba(214,84,70,.28);border-bottom:3px solid #e0735f;padding:0 4px}
+.prompt{margin-top:auto;border:3px dashed #d9b56a;border-radius:18px;padding:34px 38px;font-family:'DejaVu Sans Mono','Liberation Mono',monospace;font-size:32px;line-height:1.48;color:#f3ead7;background:rgba(0,0,0,.18);white-space:pre-wrap}
+.copy{margin-bottom:auto;margin-top:26px;font-size:26px;letter-spacing:.14em;color:#d9b56a;font-weight:700;text-transform:uppercase}
 .btn{display:inline-block;margin-top:50px;padding:28px 46px;border:2px solid #d9b56a;color:#d9b56a;font-size:36px;font-weight:600}
 """
 
@@ -101,6 +111,19 @@ def body(s):
         tag = "ul" if t == "list" else "ol"
         items = "".join(f"<li>{e(i)}</li>" for i in s.get("items", []))
         return k + (f'<h2 style="margin-top:70px">{e(s["title"])}</h2>' if s.get("title") else "") + f"<{tag}>{items}</{tag}>" + foot
+    if t == "chat":
+        def mt(m):
+            txt = e(m.get("text"))
+            for b in m.get("bad", []):
+                txt = txt.replace(e(b), f'<span class="bad">{e(b)}</span>')
+            who = m.get("label") or ("Вы" if m.get("who") == "you" else "Нейросеть")
+            return f'<div class="msg {"you" if m.get("who") == "you" else "ai"}"><span class="who">{e(who)}</span>{txt}</div>'
+        return (k + (f'<h2 style="margin-top:70px">{e(s["title"])}</h2>' if s.get("title") else "")
+                + '<div class="chat">' + "".join(mt(m) for m in s.get("messages", [])) + '</div>' + foot)
+    if t == "prompt":
+        return (k + (f'<h2 style="margin-top:70px">{e(s["title"])}</h2>' if s.get("title") else "")
+                + f'<div class="prompt">{e(s.get("prompt"))}</div>'
+                + f'<div class="copy">{e(s.get("copy", "Скопируйте — полный текст в подписи"))}</div>' + foot)
     if t == "cta":
         return ('<div class="brand">Legal.Lab.Ai</div><div style="margin-top:auto">'
                 f'<h2 style="margin-top:0">{e(s.get("title"))}<br><span class="gold">{e(s.get("accent"))}</span></h2>'
