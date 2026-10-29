@@ -5,6 +5,7 @@ name: cf-image
 #   {"prompt": "...", "refs": ["<путь в репо или https-url фото героини>", ...до 4],
 #    "out": "media/scenes/ГГГГ-ММ-ДД.jpg", "width": 1088, "height": 1360,
 #    "model": "flux-2-klein-9b" (по умолчанию), "seed": 29 (необязательно)}
+# Проверено 29.10: 9b + ОДИН образец (media/refs/heroine_face.jpg) — лучшее качество; 9b + два образца даёт AiError 3043; 4b держит и два.
 # Образцы — не больше 500 px по стороне (у модели лимит < 512x512); готовые: media/refs/heroine_face.jpg, heroine_outfit.jpg.
 # Секреты: CF_ACCOUNT_ID, CF_API_TOKEN.
 on:
