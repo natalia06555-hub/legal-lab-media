@@ -5,7 +5,7 @@ name: cf-image
 #   {"prompt": "...", "refs": ["<путь в репо или https-url фото героини>", ...до 4],
 #    "out": "media/scenes/ГГГГ-ММ-ДД.jpg", "width": 1088, "height": 1360,
 #    "model": "flux-2-klein-9b" (по умолчанию), "seed": 29 (необязательно)}
-# Образцы автоматически уменьшаются до 500 px (у модели лимит < 512x512).
+# Образцы — не больше 500 px по стороне (у модели лимит < 512x512); готовые: media/refs/heroine_face.jpg, heroine_outfit.jpg.
 # Секреты: CF_ACCOUNT_ID, CF_API_TOKEN.
 on:
   push:
@@ -37,7 +37,7 @@ jobs:
             for r in $(jq -r '.refs[]? // empty' "$f"); do
               tmp=$(mktemp --suffix=.jpg)
               case "$r" in http*) curl -sSL -o "$tmp.src" "$r";; *) cp "$r" "$tmp.src";; esac
-              ffmpeg -loglevel error -y -i "$tmp.src" -vf "scale='min(500,iw)':'min(500,ih)':force_original_aspect_ratio=decrease" -q:v 2 "$tmp"
+              mv "$tmp.src" "$tmp"   # образцы должны быть меньше 512x512 — готовые лежат в media/refs/
               args+=(--form "input_image_$i=@$tmp;type=image/jpeg"); i=$((i+1))
             done
             mkdir -p "$(dirname "$out")"
