@@ -48,7 +48,9 @@ glasses («а теперь внимательно»), handshake (договор�
  big       : value («3 года», «50 000 ₽»), caption (подпись под цифрой), foot, at_value, icon — одна крупная цифра.
  chat      : contact, messages [{from: "them"|"me", text, at}], stamp {text, at} — переписка в телефоне (мошенники).
  photo     : src (media/photos/…jpg), focus («40%»), caption, credit, at — фото в рамке с медленным наездом.
- outro     : title («Сохраните»), sub («помощник — бот в шапке профиля»).
+ outro     : title («Сохраните»), sub («помощник — бот в шапке профиля»), follow («Подпишитесь») + follow_at (якорь) — золотая кнопка-призыв.
+spec.cold_open (по умолчанию 1.5 с, 0 — выключить): первые секунды ролика показывают обложку канала (cover.jpg),
+затем она растворяется — крючок крупно виден с первого кадра (в ленте и при перелистывании).
 keywords — значимые слова (не короче 3 букв; «не», «в» игнорируются). Все тексты в сценах — короткие (2–4 слова на плашку), длинное — в озвучку.
 """
 import asyncio, json, os, re, subprocess, sys, base64, shutil, html as _h
@@ -310,7 +312,9 @@ SC.outro=(t,s)=>{
   const b=pop(t,s.start+.5,.45);
   h+=`<div style="position:absolute;left:0;right:0;top:440px;text-align:center;transform:scale(${b});opacity:${vis(t,s.start+.5)}">
     <div style="font:900 70px Inter">${esc(s.title||'Сохраните')}</div>
-    <div style="font:600 36px Inter;color:rgba(15,42,34,.6);margin-top:14px">${esc(s.sub||'помощник — бот в шапке профиля')}</div></div>`;
+    ${s.follow?'':`<div style="font:600 36px Inter;color:rgba(15,42,34,.6);margin-top:14px">${esc(s.sub||'помощник — бот в шапке профиля')}</div>`}</div>`;
+  if(s.follow){const f=pop(t,s.follow_at||s.start+1.0,.45), pu=1+.04*Math.sin(t*5);
+    h+=`<div style="position:absolute;left:0;right:0;top:640px;display:flex;justify-content:center;opacity:${vis(t,s.follow_at||s.start+1.0)}"><div style="transform:scale(${f*pu});background:var(--gold);color:#fff;font:800 46px Inter;padding:22px 44px;border-radius:999px;box-shadow:0 10px 0 rgba(15,42,34,.18);white-space:nowrap">＋ ${esc(s.follow)}</div></div>`}
   return h;
 };
 
@@ -443,6 +447,8 @@ def build_data(d, spec):
         for i, k in enumerate(("items", "tags", "nodes", "messages")):
             for j, o in enumerate(s.get(k, []) or []):
                 res(o, dflt=0.6 + 0.8 * j)
+        if s.get("follow_at") is not None:
+            v, _ = find(s["follow_at"], sidx); s["follow_at"] = v if v is not None else base + 1.0
         if "at_value" in s:
             v, _ = find(s["at_value"], sidx); s["at_value"] = v if v is not None else base
         if s.get("mascot2"):
@@ -513,6 +519,16 @@ def main(d):
                         "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p",
                         "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", out], check=True)
         os.remove(f"{d}/_body.mp4")
+    # «Холодный старт»: первые cold_open секунд поверх ролика — обложка канала (крючок крупно с первого кадра).
+    co = float(spec.get("cold_open", 1.5))
+    if co > 0:
+        os.replace(out, f"{d}/_nocold.mp4")
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", f"{d}/_nocold.mp4", "-loop", "1", "-t", f"{co + 0.4:.2f}",
+                        "-i", f"{d}/cover.jpg", "-filter_complex",
+                        f"[1:v]scale=1080:1920,format=rgba,fade=t=out:st={co:.2f}:d=0.35:alpha=1[c];[0:v][c]overlay=0:0:eof_action=pass,format=yuv420p[v]",
+                        "-map", "[v]", "-map", "0:a", "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-c:a", "copy",
+                        "-movflags", "+faststart", out], check=True)
+        os.remove(f"{d}/_nocold.mp4")
     shutil.rmtree(fdir, ignore_errors=True)
     os.remove(f"{d}/music.wav")
     print(out, f"{total:.1f}s", n, "frames")
