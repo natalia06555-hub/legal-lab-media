@@ -2,7 +2,7 @@ name: kling-image
 # Сцена дня через Kling (запасной вариант, когда в Canva кончился лимит генераций).
 # Задание: inbox/image/<имя>.json
 #   {"prompt": "...", "image": "<url фото героини>", "out": "media/scenes/ГГГГ-ММ-ДД.jpg",
-#    "model": "kling-v1-5", "image_reference": "face", "image_fidelity": 0.5, "human_fidelity": 0.6,
+#    "model": "kling-v3" (по умолчанию), "image_fidelity": 0.5 (необязательно),
 #    "aspect_ratio": "3:4", "task_id": "<необязательно: забрать уже готовую генерацию>"}
 # Ключ: тот же секрет KLING_API_KEY, что и у kling-avatar.
 on:
@@ -28,9 +28,9 @@ jobs:
             out=$(jq -r .out "$f")
             id=$(jq -r '.task_id // empty' "$f")
             if [ -z "$id" ]; then
-              body=$(jq -c '{model_name: (.model // "kling-v1-5"), prompt: .prompt, image: .image,
-                             image_reference: (.image_reference // "face"),
-                             image_fidelity: (.image_fidelity // 0.5), human_fidelity: (.human_fidelity // 0.6),
+              body=$(jq -c '{model_name: (.model // "kling-v3"), prompt: .prompt, image: .image,
+                             image_reference: .image_reference,
+                             image_fidelity: .image_fidelity, human_fidelity: .human_fidelity,
                              aspect_ratio: (.aspect_ratio // "3:4"), n: 1}
                             | with_entries(select(.value != null))' "$f")
               resp=$(curl -sS -X POST "$API" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d "$body")
