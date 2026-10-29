@@ -24,9 +24,14 @@ jobs:
           for f in inbox/avatar/*.json; do
             body=$(jq -c '{image: .image, sound_file: .audio, mode: (.mode // "std"), prompt: (.prompt // "")}' "$f")
             out=$(jq -r .out "$f")
-            resp=$(curl -sS -X POST "$API" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d "$body")
-            echo "$resp" | head -c 400; echo
-            id=$(echo "$resp" | jq -r '.data.task_id // empty')
+            id=$(jq -r '.task_id // empty' "$f")
+            if [ -z "$id" ]; then
+              resp=$(curl -sS -X POST "$API" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d "$body")
+              echo "$resp" | head -c 400; echo
+              id=$(echo "$resp" | jq -r '.data.task_id // empty')
+            else
+              echo "reuse task $id"; resp=""
+            fi
             if [ -z "$id" ]; then echo "FAIL create $f"; mkdir -p "$(dirname "$out")"; echo "$resp" > "${out%.mp4}.error.json"; git rm -q "$f"; continue; fi
             for i in $(seq 1 120); do
               sleep 10
@@ -47,4 +52,4 @@ jobs:
           git config user.email "actions@github.com"
           git add -A
           git diff --cached --quiet || git commit -m "Видео маскота от Kling"
-          git push
+          for i in 1 2 3 4 5; do git pull --rebase -q origin main && git push && break; sleep 5; done
