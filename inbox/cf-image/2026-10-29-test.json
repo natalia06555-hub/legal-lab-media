@@ -1,0 +1,3 @@
+{"prompt": "Photorealistic photo of the woman from image 0 (same face, curly dark hair pinned up), wearing the dark green tweed suit and cream blouse from image 1. She is a lawyer standing in a cozy apartment hallway, holding a smartphone slightly away from her ear and looking at the screen with a suspicious, alert expression and one raised eyebrow. Warm evening light, cinematic, shallow depth of field, vertical composition, no logos, no brand names, no readable text.",
+ "refs": ["media/avatar/faces/think.jpg", "media/scenes/2026-10-26.jpg"],
+ "out": "media/scenes/2026-10-29-cf-phone.jpg", "width": 1088, "height": 1360, "seed": 29}
