@@ -37,7 +37,7 @@ jobs:
             for r in $(jq -r '.refs[]? // empty' "$f"); do
               tmp=$(mktemp --suffix=.jpg)
               case "$r" in http*) curl -sSL -o "$tmp.src" "$r";; *) cp "$r" "$tmp.src";; esac
-              convert "$tmp.src" -resize '500x500>' -quality 92 "$tmp"
+              ffmpeg -loglevel error -y -i "$tmp.src" -vf "scale='min(500,iw)':'min(500,ih)':force_original_aspect_ratio=decrease" -q:v 2 "$tmp"
               args+=(--form "input_image_$i=@$tmp;type=image/jpeg"); i=$((i+1))
             done
             mkdir -p "$(dirname "$out")"
