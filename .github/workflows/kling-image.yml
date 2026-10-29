@@ -1,0 +1,62 @@
+name: kling-image
+# Сцена дня через Kling (запасной вариант, когда в Canva кончился лимит генераций).
+# Задание: inbox/image/<имя>.json
+#   {"prompt": "...", "image": "<url фото героини>", "out": "media/scenes/ГГГГ-ММ-ДД.jpg",
+#    "model": "kling-v1-5", "image_reference": "face", "image_fidelity": 0.5, "human_fidelity": 0.6,
+#    "aspect_ratio": "3:4", "task_id": "<необязательно: забрать уже готовую генерацию>"}
+# Ключ: тот же секрет KLING_API_KEY, что и у kling-avatar.
+on:
+  push:
+    paths: ["inbox/image/**"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate
+        env:
+          KEY: ${{ secrets.KLING_API_KEY }}
+        run: |
+          set -e
+          API=https://api-singapore.klingai.com/v1/images/generations
+          shopt -s nullglob
+          for f in inbox/image/*.json; do
+            out=$(jq -r .out "$f")
+            id=$(jq -r '.task_id // empty' "$f")
+            if [ -z "$id" ]; then
+              body=$(jq -c '{model_name: (.model // "kling-v1-5"), prompt: .prompt, image: .image,
+                             image_reference: (.image_reference // "face"),
+                             image_fidelity: (.image_fidelity // 0.5), human_fidelity: (.human_fidelity // 0.6),
+                             aspect_ratio: (.aspect_ratio // "3:4"), n: 1}
+                            | with_entries(select(.value != null))' "$f")
+              resp=$(curl -sS -X POST "$API" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d "$body")
+              echo "$resp" | head -c 400; echo
+              id=$(echo "$resp" | jq -r '.data.task_id // empty')
+              if [ -z "$id" ]; then mkdir -p "$(dirname "$out")"; echo "$resp" > "${out%.*}.error.json"; git rm -q "$f"; continue; fi
+            else
+              echo "reuse task $id"
+            fi
+            for i in $(seq 1 60); do
+              sleep 10
+              st=$(curl -sS "$API/$id" -H "Authorization: Bearer $KEY")
+              s=$(echo "$st" | jq -r '.data.task_status')
+              echo "$i $s"
+              if [ "$s" = "succeed" ]; then
+                url=$(echo "$st" | jq -r '.data.task_result.images[0].url')
+                mkdir -p "$(dirname "$out")"; curl -sSL -o "$out" "$url"; echo "ok $out (task $id)"; break
+              fi
+              if [ "$s" = "failed" ]; then mkdir -p "$(dirname "$out")"; echo "$st" > "${out%.*}.error.json"; break; fi
+            done
+            git rm -q "$f"
+          done
+      - name: Commit
+        run: |
+          git config user.name "legal-lab-media-bot"
+          git config user.email "actions@github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Сцена дня от Kling"
+          for i in 1 2 3 4 5; do git pull --rebase -q origin main && git push && break; sleep 5; done
